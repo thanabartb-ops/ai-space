@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>AI SPACE</title>
+<meta name="description" content="พื้นที่ AI สำหรับแชท เขียนโค้ด สร้างภาพ ค้นคว้า อ่านเว็บ และเขียนคอนเทนต์ จากหน้าเดียว" />
+<style>
+  :root {
+    --bg: #000000;
+    --text: #ffffff;
+    --accent: #0fa3d9;
+    --accent-dim: rgba(15, 163, 217, 0.14);
+    --accent-line: rgba(15, 163, 217, 0.35);
+    --surface: #0a0a0a;
+    --surface-2: #121212;
+    --line: #232323;
+    --muted: #9a9a9a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans Thai", "IBM Plex Sans Thai", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    overscroll-behavior: none;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 860px;
+    margin: 0 auto;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 10px;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  .brand { display: flex; align-items: baseline; gap: 8px; }
+  .brand .mark {
+    width: 12px; height: 12px; border-radius: 3px;
+    background: var(--accent);
+    display: inline-block;
+    align-self: center;
+  }
+  .brand h1 { font-size: 18px; letter-spacing: 0.14em; margin: 0; font-weight: 700; }
+  .newchat {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .newchat:hover { color: #fff; border-color: var(--accent); }
+
+  /* ---------- mode chips ---------- */
+  .modes {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+    flex: none;
+  }
+  .modes::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none;
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+  .chip:hover { color: #fff; border-color: var(--accent-line); }
+  .chip.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ---------- chat area ---------- */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .msg { display: flex; flex-direction: column; max-width: 86%; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.ai { align-self: flex-start; }
+  .bubble {
+    border-radius: 16px;
+    padding: 11px 15px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .msg.user .bubble { background: var(--accent); color: #000; border-bottom-right-radius: 5px; font-weight: 500; }
+  .msg.ai .bubble { background: var(--surface-2); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+  .msg.ai .bubble p { margin: 0 0 8px; }
+  .msg.ai .bubble p:last-child { margin-bottom: 0; }
+  .bubble a { color: var(--accent); }
+  .bubble img { max-width: 100%; border-radius: 12px; display: block; margin: 4px 0; }
+  pre.codeblock {
+    background: #000;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 8px 0;
+    position: relative;
+    font-size: 13.5px;
+  }
+  pre.codeblock code { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; color: #e8e8e8; }
+  .copybar { display: flex; gap: 8px; margin-top: 6px; }
+  .copybtn, .dlbtn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12.5px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .copybtn:hover, .dlbtn:hover { color: #fff; border-color: var(--accent); }
+  .copybtn.done { color: var(--accent); border-color: var(--accent-line); }
+
+  /* typing indicator */
+  .typing { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; padding: 4px 2px; }
+  .dots { display: inline-flex; gap: 5px; }
+  .dots span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .dots span:nth-child(2) { animation-delay: .15s; }
+  .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); opacity: .45; } 40% { transform: translateY(-5px); opacity: 1; } }
+
+  /* empty state */
+  .welcome { color: var(--muted); text-align: center; margin: auto 0; padding: 12px; }
+  .welcome .hi { font-size: 21px; color: #fff; font-weight: 700; margin: 0 0 6px; }
+  .welcome .sub { font-size: 14.5px; margin: 0 0 22px; }
+  .sugs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; max-width: 640px; margin: 0 auto; }
+  .sug {
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: #e6e6e6;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .sug:hover { border-color: var(--accent); }
+  .sug .t { color: var(--accent); font-weight: 600; font-size: 12.5px; letter-spacing: .04em; display: block; margin-bottom: 3px; }
+
+  .errbox { color: #fff; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 11px 15px; font-size: 14.5px; }
+
+  /* ---------- composer ---------- */
+  .composer {
+    flex: none;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+  }
+  .composer textarea {
+    flex: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 15.5px;
+    line-height: 1.45;
+    padding: 11px 15px;
+    resize: none;
+    max-height: 140px;
+    min-height: 45px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .composer textarea:focus { border-color: var(--accent); }
+  .composer textarea::placeholder { color: #6d6d6d; }
+  #send {
+    flex: none;
+    width: 45px; height: 45px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #000;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: opacity .15s, transform .1s;
+  }
+  #send:hover { opacity: .9; }
+  #send:active { transform: scale(.94); }
+  #send:disabled { opacity: .35; cursor: default; }
+  #send svg { width: 20px; height: 20px; }
+
+  @media (min-width: 640px) {
+    .app { padding: 0 20px; }
+    header { padding-top: 14px; }
+    .msg { max-width: 74%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <h1>AI SPACE</h1>
+    </div>
+    <button class="newchat" id="newchat" type="button">แชทใหม่</button>
+  </header>
+
+  <nav class="modes" id="modes" aria-label="โหมดการใช้งาน"></nav>
+
+  <main id="chat" aria-live="polite"></main>
+
+  <div class="composer">
+    <textarea id="input" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="ข้อความ"></textarea>
+    <button id="send" type="button" aria-label="ส่ง">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+"use strict";
+var API = "https://superagent-c3244e9b.base44.app/functions/aiSpace";
+
+var MODES = [
+  { id: "chat",    label: "แชท",          ph: "ถามอะไรก็ได้...", },
+  { id: "code",    label: "เขียนโค้ด",     ph: "บอกโจทย์ หรือวางโค้ดที่ต้องการให้แก้..." },
+  { id: "image",   label: "สร้างภาพ",      ph: "อธิบายภาพที่ต้องการ เช่น แมวอวบสีฟ้าสไตล์ภาพถ่าย" },
+  { id: "research",label: "ค้นคว้า",       ph: "หัวข้อที่ต้องการให้ค้นข้อมูลจากเว็บ..." },
+  { id: "read",    label: "อ่านลิงก์",      ph: "วางลิงก์ (URL) ที่ต้องการให้อ่านและสรุป..." },
+  { id: "write",   label: "เขียนคอนเทนต์", ph: "โจทย์เนื้อหาที่ต้องการ เช่น แคปชันขายกาแฟ 3 แบบ" }
+];
+
+var SUGGESTIONS = {
+  chat:    [["ถามได้ทุกอย่าง", "อธิบาย AI ให้เด็กฟังเข้าใจใน 3 ประโยค"], ["ไอเดีย", "ช่วยคิดชื่อร้านกาแฟ 5 ชื่อ"]],
+  code:    [["เขียนโค้ดใหม่", "เขียนสคริปต์ Python รวมไฟล์ PDF ทั้งโฟลเดอร์"], ["แก้โค้ด", "วางโค้ดของคุณแล้วบอกว่าติดปัญหาอะไร"]],
+  image:   [["ภาพสัตว์", "แมวอวบสีฟ้าน่ารัก สไตล์ภาพถ่าย"], ["ภาพฉาก", "ท้องฟ้ายามเย็นเหนือทะเล โทนอบอุ่น"]],
+  research: [["ข่าวสาร", "AI มีความคืบหน้าอะไรน่าสนใจล่าสุด"], ["เปรียบเทียบ", "เทียบซื้อมือถือราคาไม่เกิน 15,000 ปีนี้"]],
+  read:    [["อ่านบทความ", "วางลิงก์บทความที่ยาวไป ให้สรุปเป็นข้อ ๆ"]],
+  write:   [["โซเชียล", "เขียนแคปชันขายกาแฟดริปอุ่นๆ 3 แบบ"], ["บล็อก", "เขียนเปิดบล็อกเรื่องออกกำลังกายตอนเช้า"]]
+};
+
+var mode = localStorage.getItem("aispace_mode") || "chat";
+if (!MODES.some(function (m) { return m.id === mode; })) mode = "chat";
+var conversationId = localStorage.getItem("aispace_cid") || "";
+var history = [];
+try { history = JSON.parse(localStorage.getItem("aispace_history") || "[]"); } catch (e) { history = []; }
+var busy = false;
+
+var chatEl = document.getElementById("chat");
+var inputEl = document.getElementById("input");
+var sendEl = document.getElementById("send");
+var modesEl = document.getElementById("modes");
+
+function saveState() {
+  localStorage.setItem("aispace_cid", conversationId);
+  localStorage.setItem("aispace_mode", mode);
+  localStorage.setItem("aispace_history", JSON.stringify(history.slice(-40)));
+}
+
+/* ---------- rendering ---------- */
+
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function renderMarkdown(text) {
+  var wrap = document.createDocumentFragment();
+
+  // image mode contract: first line IMAGE_URL: <url>
+  var lines = text.split("\n");
+  var restLines = lines.slice();
+  if (/^\s*IMAGE_URL:\s*(https?:\/\/\S+)/i.test(lines[0])) {
+    var m = lines[0].match(/^\s*IMAGE_URL:\s*(https?:\/\/\S+)/i);
+    restLines = lines.slice(1);
+    var img = el("img");
+    img.src = m[1];
+    img.alt = "ภาพที่สร้าง";
+    img.loading = "lazy";
+    var dl = el("button", "dlbtn", "บันทึกภาพ");
+    dl.type = "button";
+    dl.addEventListener("click", function () { window.open(m[1], "_blank"); });
+    var bar = el("div", "copybar");
+    bar.appendChild(dl);
+    wrap.appendChild(img);
+    wrap.appendChild(bar);
+  }
+  var rest = restLines.join("\n").trim();
+  if (rest) renderBlocks(rest, wrap);
+  return wrap;
+}
+
+function renderBlocks(text, wrap) {
+  var parts = text.split(/```/);
+  for (var i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      var para = parts[i].split(/\n{2,}/);
+      para.forEach(function (p) {
+        var t = p.trim();
+        if (!t) return;
+        var div = el("div", null);
+        div.appendChild(inline(t));
+        wrap.appendChild(div);
+      });
+    } else {
+      var codeText = parts[i];
+      var nl = codeText.indexOf("\n");
+      var lang = "";
+      if (nl > 0) { lang = codeText.slice(0, nl).trim(); codeText = codeText.slice(nl + 1); }
+      var pre = el("pre", "codeblock");
+      var code = el("code", null, codeText.replace(/\n$/, ""));
+      pre.appendChild(code);
+      wrap.appendChild(pre);
+      wrap.appendChild(makeCopyRow(codeText, "คัดลอกโค้ด"));
+    }
+  }
+}
+
+function inline(text) {
+  var frag = document.createDocumentFragment();
+  // escape-aware simple renderer: links, bold
+  var esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  var html = esc
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  var tmp = el("div");
+  tmp.innerHTML = html;
+  while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+  return frag;
+}
+
+function makeCopyRow(text, label) {
+  var bar = el("div", "copybar");
+  var btn = el("button", "copybtn", label);
+  btn.type = "button";
+  btn.addEventListener("click", function () {
+    copyText(text, btn);
+  });
+  bar.appendChild(btn);
+  return bar;
+}
+
+function copyText(text, btn) {
+  var done = function () {
+    if (btn) {
+      var old = btn.textContent;
+      btn.textContent = "คัดลอกแล้ว";
+      btn.classList.add("done");
+      setTimeout(function () { btn.textContent = old; btn.classList.remove("done"); }, 1600);
+    }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+  } else {
+    legacyCopy(text);
+    done();
+  }
+}
+function legacyCopy(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function addMsg(role, text, raw) {
+  var m = el("div", "msg " + role);
+  var b = el("div", "bubble");
+  if (role === "ai") {
+    b.appendChild(renderMarkdown(text));
+  } else {
+    b.textContent = text;
+  }
+  m.appendChild(b);
+  if (role === "ai") {
+    m.appendChild(makeCopyRow(raw != null ? raw : text, "คัดลอกคำตอบ"));
+  }
+  chatEl.appendChild(m);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  return m;
+}
+
+/* ---------- empty state ---------- */
+
+function showWelcome() {
+  chatEl.innerHTML = "";
+  var w = el("div", "welcome");
+  var hi = el("p", "hi", "สวัสดี 👋");
+  var sub = el("p", "sub", "เลือกโหมดด้านบน แล้วพิมพ์สิ่งที่ต้องการได้เลย");
+  w.appendChild(hi);
+  w.appendChild(sub);
+  var sugs = el("div", "sugs");
+  (SUGGESTIONS[mode] || []).forEach(function (s) {
+    var b = el("button", "sug");
+    b.type = "button";
+    b.appendChild(el("span", "t", s[0]));
+    b.appendChild(document.createTextNode(s[1]));
+    b.addEventListener("click", function () {
+      inputEl.value = s[1];
+      inputEl.focus();
+      autoGrow();
+    });
+    sugs.appendChild(b);
+  });
+  w.appendChild(sugs);
+  chatEl.appendChild(w);
+}
+
+/* ---------- modes ---------- */
+
+function renderModes() {
+  modesEl.innerHTML = "";
+  MODES.forEach(function (m) {
+    var b = el("button", "chip" + (m.id === mode ? " active" : ""), m.label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", m.id === mode ? "true" : "false");
+    b.addEventListener("click", function () {
+      mode = m.id;
+      saveState();
+      renderModes();
+      inputEl.placeholder = m.ph;
+      inputEl.focus();
+    });
+    modesEl.appendChild(b);
+  });
+}
+
+/* ---------- api ---------- */
+
+function ensureConversation(cb) {
+  if (conversationId) return cb();
+  fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "init" })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (d.ok && d.conversationId) {
+      conversationId = d.conversationId;
+      saveState();
+      cb();
+    } else {
+      showError("เริ่มบทสนทนาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    }
+  }).catch(function () {
+    showError("เชื่อมต่อไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่");
+  });
+}
+
+function showError(text) {
+  var m = el("div", "msg ai");
+  var b = el("div", "errbox", text);
+  m.appendChild(b);
+  chatEl.appendChild(m);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function send() {
+  var text = inputEl.value.trim();
+  if (!text || busy) return;
+  busy = true;
+  sendEl.disabled = true;
+  inputEl.value = "";
+  autoGrow();
+  chatEl.innerHTML = "";
+  addMsg("user", text);
+
+  var t = el("div", "typing");
+  var dots = el("span", "dots");
+  dots.appendChild(el("span")); dots.appendChild(el("span")); dots.appendChild(el("span"));
+  var label = el("span", null, "กำลังทำงาน อาจใช้เวลาสักครู่");
+  t.appendChild(dots);
+  t.appendChild(label);
+  chatEl.appendChild(t);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  var sec = 0;
+  var timer = setInterval(function () {
+    sec++;
+    if (label.parentNode) label.textContent = "กำลังทำงาน... " + sec + " วิ";
+  }, 1000);
+
+  ensureConversation(function () {
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "chat",
+        conversationId: conversationId,
+        mode: mode,
+        message: text
+      })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      clearInterval(timer);
+      t.remove();
+      busy = false;
+      sendEl.disabled = false;
+      if (d.ok && typeof d.reply === "string" && d.reply.trim()) {
+        addMsg("ai", d.reply);
+        history.push({ role: "user", text: text });
+        history.push({ role: "ai", text: d.reply });
+        saveState();
+      } else if (d.error === "rate_limited") {
+        showError(d.message || "คุณส่งข้อความถี่เกินไป กรุณารอสักครู่แล้วลองใหม่");
+      } else {
+        showError("ขออภัย ระบบขัดข้องชั่วคราว กรุณาลองส่งใหม่อีกครั้ง");
+      }
+    }).catch(function () {
+      clearInterval(timer);
+      t.remove();
+      busy = false;
+      sendEl.disabled = false;
+      showError("เชื่อมต่อไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่");
+    });
+  });
+}
+
+/* ---------- composer ---------- */
+
+function autoGrow() {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + "px";
+}
+inputEl.addEventListener("input", autoGrow);
+inputEl.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+sendEl.addEventListener("click", send);
+
+document.getElementById("newchat").addEventListener("click", function () {
+  conversationId = "";
+  history = [];
+  saveState();
+  showWelcome();
+  inputEl.focus();
+});
+
+/* ---------- boot ---------- */
+
+renderModes();
+inputEl.placeholder = (MODES.find(function (m) { return m.id === mode; }) || MODES[0]).ph;
+if (history.length) {
+  history.slice(-12).forEach(function (h) { addMsg(h.role, h.text); });
+} else {
+  showWelcome();
+}
+autoGrow();
+</script>
+</body>
+</html>
