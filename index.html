@@ -287,8 +287,8 @@ var SUGGESTIONS = {
 var mode = localStorage.getItem("aispace_mode") || "chat";
 if (!MODES.some(function (m) { return m.id === mode; })) mode = "chat";
 var conversationId = localStorage.getItem("aispace_cid") || "";
-var history = [];
-try { history = JSON.parse(localStorage.getItem("aispace_history") || "[]"); } catch (e) { history = []; }
+var msgs = [];
+try { msgs = JSON.parse(localStorage.getItem("aispace_history") || "[]"); } catch (e) { msgs = []; }
 var busy = false;
 
 var chatEl = document.getElementById("chat");
@@ -299,7 +299,7 @@ var modesEl = document.getElementById("modes");
 function saveState() {
   localStorage.setItem("aispace_cid", conversationId);
   localStorage.setItem("aispace_mode", mode);
-  localStorage.setItem("aispace_history", JSON.stringify(history.slice(-40)));
+  localStorage.setItem("aispace_history", JSON.stringify(msgs.slice(-40)));
 }
 
 /* ---------- rendering ---------- */
@@ -546,8 +546,8 @@ function send() {
       sendEl.disabled = false;
       if (d.ok && typeof d.reply === "string" && d.reply.trim()) {
         addMsg("ai", d.reply);
-        history.push({ role: "user", text: text });
-        history.push({ role: "ai", text: d.reply });
+        msgs.push({ role: "user", text: text });
+        msgs.push({ role: "ai", text: d.reply });
         saveState();
       } else if (d.error === "rate_limited") {
         showError(d.message || "คุณส่งข้อความถี่เกินไป กรุณารอสักครู่แล้วลองใหม่");
@@ -581,7 +581,7 @@ sendEl.addEventListener("click", send);
 
 document.getElementById("newchat").addEventListener("click", function () {
   conversationId = "";
-  history = [];
+  msgs = [];
   saveState();
   showWelcome();
   inputEl.focus();
@@ -591,8 +591,8 @@ document.getElementById("newchat").addEventListener("click", function () {
 
 renderModes();
 inputEl.placeholder = (MODES.find(function (m) { return m.id === mode; }) || MODES[0]).ph;
-if (history.length) {
-  history.slice(-12).forEach(function (h) { addMsg(h.role, h.text); });
+if (msgs.length) {
+  msgs.slice(-12).forEach(function (h) { addMsg(h.role, h.text); });
 } else {
   showWelcome();
 }
