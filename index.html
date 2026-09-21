@@ -490,17 +490,29 @@ function ensureConversation(cb) {
       saveState();
       cb();
     } else {
-      showError("เริ่มบทสนทนาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      showError("เริ่มบทสนทนาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", text);
     }
   }).catch(function () {
-    showError("เชื่อมต่อไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่");
+    showError("เชื่อมต่อไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่", text);
   });
 }
 
-function showError(text) {
+function showError(text, retryMsg) {
   var m = el("div", "msg ai");
   var b = el("div", "errbox", text);
   m.appendChild(b);
+  if (retryMsg) {
+    var bar = el("div", "copybar");
+    var btn = el("button", "copybtn", "ลองใหม่");
+    btn.type = "button";
+    btn.addEventListener("click", function () {
+      m.remove();
+      inputEl.value = retryMsg;
+      send();
+    });
+    bar.appendChild(btn);
+    m.appendChild(bar);
+  }
   chatEl.appendChild(m);
   chatEl.scrollTop = chatEl.scrollHeight;
 }
@@ -552,14 +564,14 @@ function send() {
       } else if (d.error === "rate_limited") {
         showError(d.message || "คุณส่งข้อความถี่เกินไป กรุณารอสักครู่แล้วลองใหม่");
       } else {
-        showError("ขออภัย ระบบขัดข้องชั่วคราว กรุณาลองส่งใหม่อีกครั้ง");
+        showError("ขออภัย ระบบขัดข้องชั่วคราว กรุณาลองส่งใหม่อีกครั้ง", text);
       }
     }).catch(function () {
       clearInterval(timer);
       t.remove();
       busy = false;
       sendEl.disabled = false;
-      showError("เชื่อมต่อไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่");
+      showError("เชื่อมต่อไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่", text);
     });
   });
 }
